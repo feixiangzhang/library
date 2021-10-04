@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>Library vue-demo</title>
+		<style type="text/css">
+			table {
+				margin-top: 10px;
+				border-collapse: collapse;
+				border: 1px solid gray;
+			}
+			td, th {
+				padding: 3px 8px;
+				text-align: center;
+			}
+			tr:nth-of-type(even) {
+				background-color: rgb(240,240,240);
+			}
+			thead {
+				background-color: lightblue;
+			}
+			input:disabled {
+				background-color: rgba(0,0,0,0.5);
+				color: white;
+			}
+			p.total {
+				background-color: antiquewhite;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="app">
+			<h1>智能图书馆</h1>
+			<label for="id">编号:</label>
+			<input type="text" id="id" v-model="bid" :disabled=true>
+			<label for="name">名称:</label>
+			<input type="text" id="name" v-model="bname">
+			<button type="button" @click="addBook">添加</button>
+			<p class="total">图书共有{{totalBook}}册</p>
+			<table border="1px solid black" cellspacing="" cellpadding="">
+				<thead>
+					<tr>
+						<th>编号</th>
+						<th>名称</th>
+						<th>时间</th>
+						<th>操作</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr :key='item.id' v-for="item in books">
+						<td>{{item.id}}</td>
+						<td>{{item.name}}</td>
+						<td>{{item.date}}</td>
+						<td>
+							<a href="" @click.prevent='editBook(item.id)'>修改</a>
+							<span> | </span>
+							<a href="" @click.prevent='deleteBook(item.id)'>删除</a>
+						</td>
+					</tr>
+				</tbody>
+				
+			</table>
+		</div>
+		<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+		<script type="text/javascript">
+			const vm = new Vue({
+				el: '#app',
+				data() {
+					return {
+						bid: '',
+						bname: '',
+						idDisable: false,
+						books: []
+					}
+				},
+
+                mounted: function() {
+						this.refreshBooks()
+					},
+				computed: {
+					totalBook() {
+						return this.books.length
+					}
+				},
+				methods: {
+					refreshBooks: async function() {
+						let res = await fetch("/books")
+						let data = await res.json()
+						this.books = data
+					},
+					addBook: function() {
+						let book = {};
+						book.id = this.bid;
+						book.name = this.bname;
+						this.date = '';
+						//先判断book id 是否已经存在数组重，若存在则修改，否则添加
+						if (!this.idDisable) {
+							//将数据插入数组books
+							// this.books.push(book);
+							fetch('/books', {
+								method: 'post',
+								body: 'name=' + this.bname,
+								headers: {
+									'Content-Type': 'application/x-www-form-urlencoded'
+								}
+							}).then(res => res.text())
+							.then(data => {
+								console.log(data)
+								this.refreshBooks()
+							})
+						} else {
+							//修改对应id处的数据
+							fetch('/books/' + this.bid, {
+								method: 'put',
+								body: `name=${this.bname}&date=${Date.now()}`,
+								headers: {
+									'Content-Type': 'application/x-www-form-urlencoded'
+								}
+							}).then(res => {
+								this.refreshBooks()
+							})
+							// this.$set(this.books, bookIndex, book);
+						}
+
+						//清空输入框
+						this.bid = '';
+						this.bname = '';
+						this.idDisable = false;
+					},
+					editBook(id) {
+						this.bid = id;
+						this.bname = this.books.find(book => book.id === id).name;
+						this.idDisable = true;
+					},
+					deleteBook(id) {
+						console.log('id:' + id)
+						fetch('/books/' + id, {
+							method: 'delete'
+						}).then(res => {
+							return res.text()
+						}).then(data => {
+							console.log(data)
+							this.refreshBooks()
+						})
+
+					}
+				}
+			})
+		</script>
+	</body>
+</html>
